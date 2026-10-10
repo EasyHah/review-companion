@@ -41,6 +41,54 @@ claude plugin install review-companion@review-companion-unified-local
 
 `review-companion-unified-local` 是兼容既有安装的 marketplace 标识，也用于在线来源。升级后重启对应宿主或 MCP 进程再使用。固定标签不会自动跟随新版本。
 
+### 跟踪 main（Pi / Codex）
+
+希望以后通过更新命令获取最新代码，可以选择跟踪 `main`。固定标签用于保持指定发布版本；`main` 跟随分支最新提交，可能包含尚未正式发布的改动。跟踪分支不表示自动后台更新，仍需执行下面的更新命令。
+
+Pi 首次安装，或从同一仓库的固定标签切换到 `main`：
+
+```sh
+pi install git:github.com/EasyHah/review-companion@main
+```
+
+Pi 会更新同一 Git 仓库的来源引用，无需先卸载；其他包的注册保持不变。
+
+Codex 首次添加此来源：
+
+```sh
+codex plugin marketplace add EasyHah/review-companion --ref main
+codex plugin add review-companion@review-companion-unified-local
+```
+
+如果 Codex 已添加同名来源，但仍固定在 `v0.4.0` 或指向本地目录，先替换这一项来源：
+
+```sh
+codex plugin marketplace remove review-companion-unified-local
+codex plugin marketplace add EasyHah/review-companion --ref main
+codex plugin add review-companion@review-companion-unified-local
+```
+
+来源替换只需做一次；以后更新不需要再次移除。回顾记录独立于插件安装目录保存，无需迁移或重置。
+
+### 跟踪 main 后的日常更新
+
+Pi，只更新回顾伴随：
+
+```sh
+pi update --extension git:github.com/EasyHah/review-companion@main
+```
+
+Codex，先刷新 marketplace，再更新已安装插件：
+
+```sh
+codex plugin marketplace upgrade review-companion-unified-local
+codex plugin add review-companion@review-companion-unified-local
+```
+
+更新后重启 Pi；Codex 新开聊天，若仍加载旧版则重启客户端。配置、认证和回顾记录沿用原有位置。以上命令已在 Codex CLI 0.145.0 和 Pi 1.1.0 上验证。
+
+终端需要能够访问 GitHub。如果网络依赖代理，请按自己的环境设置 `HTTPS_PROXY` 等变量；插件不会修改系统代理。
+
 ## 对话技能与轻量插件
 
 插件恢复原有功能分组和逐文件回顾。文件有风险线索时，卡片高亮并可展开一两句说明；分组标题提示涉及多少份文件。没有风险总览页、路径推荐按钮或图形生成流程。风险标记独立于已回顾状态；未标记不代表安全。
