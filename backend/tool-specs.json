@@ -1,0 +1,374 @@
+[
+  {
+    "name": "set_file_risks",
+    "description": "将对话已提出的风险线索映射到对应文件。只更新传入文件的短说明，不改变功能分组、结论或回顾进度。notes=[]仅清除该文件标记；未传文件保持原样。详细依据与验证留在对话。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "review_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expected_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "updates": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 50,
+          "items": {
+            "type": "object",
+            "properties": {
+              "file_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "notes": {
+                "type": "array",
+                "maxItems": 5,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 300
+                }
+              }
+            },
+            "required": [
+              "file_id",
+              "notes"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "review_id",
+        "expected_version",
+        "updates"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "read_fixed_evidence",
+    "description": "分页读取回顾固定提交源码或两端 Diff 的文字证据，不接受任意路径。offset/limit 按字符计算，按 next_offset 继续读取。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "review_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "file_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "source",
+            "diff"
+          ]
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 24000
+        }
+      },
+      "required": [
+        "review_id",
+        "file_id"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "start_review",
+    "description": "建立整个开发分支相对主分支的固定提交回顾。只读取已提交改动，不 fetch 或切换分支；同一固定范围再次打开保留进度。随后由 skill 轻量梳理功能总览。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "repository_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "main_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_ref": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "repository_path"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "read_review",
+    "description": "只读回顾数据，不打开面板。用于继续讲解、查询进度和后台刷新。省略 review_id 读取最近回顾。打开面板请仅在用户要求时使用 open_review。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "review_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "open_review",
+    "description": "首次或用户明确要求时打开回顾面板；指定 review_id 会选择该回顾。不在每份文件讲解、查询或更新结论时重复调用，已打开面板自行刷新。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "review_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "activate_review",
+    "description": "由用户明确选择另一份回顾时，将它设为最近回顾并返回总览；后台刷新应使用只读 read_review。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "review_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "review_id"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "list_review_files",
+    "description": "按页读取此次固定范围的文件职责、回顾状态和短结论。用 next_offset 继续；不要把单页当成完整文件清单。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "review_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "feature_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
+      },
+      "required": [
+        "review_id"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "set_review_overview",
+    "description": "保存 skill 轻量梳理的功能总览：行为变化在前、实现概括在后。只引用本次回顾的文件标识；保留既有进度和短结论。必须使用刚读取的 expected_version。title≤100字，behavior/implementation各≤240字，职责≤300字；file_ids原样复制。未归类文件自动保留。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "review_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expected_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "features": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 49,
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "behavior": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 240
+              },
+              "implementation": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 240
+              },
+              "file_ids": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "responsibilities": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string",
+                  "maxLength": 300
+                }
+              }
+            },
+            "required": [
+              "title",
+              "behavior",
+              "implementation",
+              "file_ids"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "review_id",
+        "expected_version",
+        "features"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "set_file_review",
+    "description": "仅在对话中实际交付当前文件讲解后保存；总览或读取关联文件不算已讲解。默认保存当前一份后结束，除非用户明确批量请求。在同一次更新中保存 reviewed、conclusion（改动）和 impact_conclusion（影响）。省略任一结论时保留原值。仅单独追问影响时用 set_file_conclusion，不改进度。版本冲突先重读。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "review_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "file_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expected_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "reviewed": {
+          "type": "boolean"
+        },
+        "conclusion": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "impact_conclusion": {
+          "type": "string",
+          "maxLength": 500
+        }
+      },
+      "required": [
+        "review_id",
+        "file_id",
+        "expected_version"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "set_file_conclusion",
+    "description": "分别保存 explanation 解释结论或 impact 影响结论；只改指定结论，不覆盖另一类结论或改变回顾状态。已有面板自行刷新，无需重新打开。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "review_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "file_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expected_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "conclusion_kind": {
+          "type": "string",
+          "enum": [
+            "explanation",
+            "impact"
+          ]
+        },
+        "conclusion": {
+          "type": "string",
+          "maxLength": 500
+        }
+      },
+      "required": [
+        "review_id",
+        "file_id",
+        "expected_version",
+        "conclusion_kind",
+        "conclusion"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "prepare_editor",
+    "description": "将固定提交中的源文件或比较两端导出为只读文件，返回编辑器链接和可复制命令。删除文件使用基准版本。不启动编辑器，不返回源码内容。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "review_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "file_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "source",
+            "diff"
+          ]
+        }
+      },
+      "required": [
+        "review_id",
+        "file_id"
+      ],
+      "additionalProperties": false
+    }
+  }
+]

@@ -1,0 +1,9 @@
+{
+  "name": "review-companion",
+  "version": "0.4.0",
+  "description": "回顾伴随：沿用当前模型，共享功能总览、固定提交证据和回顾进度。",
+  "author": {
+    "name": "Review Companion"
+  },
+  "hooks": "./adapters/claude/hooks.json"
+}

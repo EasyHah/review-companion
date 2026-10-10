@@ -1,0 +1,387 @@
+diff --git a/bin/pi-web.js b/bin/pi-web.js
+index 0ddef84..48930e5 100755
+--- a/bin/pi-web.js
++++ b/bin/pi-web.js
+@@ -62,6 +62,12 @@ try {
+ 
+ const loopbackHostnames = new Set(["127.0.0.1", "localhost", "::1", "[::1]"]);
+ const passwordEnabled = Boolean(process.env.PI_WEB_PASSWORD);
++// The companion iframe trusts only this exact local browser origin.
++if (loopbackHostnames.has(hostname)) {
++  process.env.REVIEW_COMPANION_EMBED_ORIGIN = `http://${hostname}:${port}`;
++} else {
++  delete process.env.REVIEW_COMPANION_EMBED_ORIGIN;
++}
+ 
+ if (!fs.existsSync(nextDir)) {
+   console.error("Build artifacts not found. Please report this issue.");
+diff --git a/components/AppShell.tsx b/components/AppShell.tsx
+index 5dccaba..9b94cd4 100644
+--- a/components/AppShell.tsx
++++ b/components/AppShell.tsx
+@@ -8,6 +8,7 @@ import { ChatWindow } from "./ChatWindow";
+ import { NewSessionContextBar, type NewSessionContextControl } from "./NewSessionContextBar";
+ import type { ChatScrollPosition } from "@/lib/chat-scroll-position";
+ import { FileViewer } from "./FileViewer";
++import { ReviewCompanionPanel } from "./ReviewCompanionPanel";
+ import { TabBar, type Tab } from "./TabBar";
+ import { openFileTab, saveFileViewerState } from "./file-tab-state";
+ import { SettingsPanel, SettingsSectionIcon } from "./SettingsPanel";
+@@ -510,6 +511,9 @@ export function AppShell() {
+ 
+   // Files unmount when inactive; workspace terminals stay mounted until closed.
+   const [fileTabs, setFileTabs] = useState<Tab[]>([]);
++  const [reviewPanelActive, setReviewPanelActive] = useState(false);
++  const reviewPanelActiveRef = useRef(reviewPanelActive);
++  reviewPanelActiveRef.current = reviewPanelActive;
+   const [activeFileTabId, setActiveFileTabId] = useState<string | null>(null);
+   const [terminalTabs, setTerminalTabs] = useState<TerminalTab[]>([]);
+   const [terminalsRestored, setTerminalsRestored] = useState(false);
+@@ -773,7 +777,7 @@ export function AppShell() {
+       setFileTabs([]);
+       if (!activeFileTabId || activeFileTabId.startsWith("file:")) {
+         setActiveFileTabId(null);
+-        setRightPanelOpen(false);
++        if (!reviewPanelActiveRef.current) setRightPanelOpen(false);
+       }
+       // Restore the workspace we switched to: its last open session, or keep
+       // the default welcome page when none is remembered.
+@@ -797,7 +801,7 @@ export function AppShell() {
+       setFileTabs([]);
+       if (!activeFileTabId || activeFileTabId.startsWith("file:")) {
+         setActiveFileTabId(null);
+-        setRightPanelOpen(false);
++        if (!reviewPanelActiveRef.current) setRightPanelOpen(false);
+       }
+       setActiveTopPanel(null);
+     }
+@@ -868,7 +872,7 @@ export function AppShell() {
+       setFileTabs([]);
+       if (!activeFileTabId || activeFileTabId.startsWith("file:")) {
+         setActiveFileTabId(null);
+-        setRightPanelOpen(false);
++        if (!reviewPanelActiveRef.current) setRightPanelOpen(false);
+       }
+     }
+     activeProjectKeyRef.current = targetProject;
+@@ -1125,6 +1129,7 @@ export function AppShell() {
+     fileName: string,
+     options?: { sourceSessionId?: string | null; modeHint?: "diff"; page?: number },
+   ) => {
++    setReviewPanelActive(false);
+     const sourceSessionId = options?.sourceSessionId;
+     const modeHint = options?.modeHint;
+     const page = options?.page;
+@@ -1148,6 +1153,7 @@ export function AppShell() {
+   }, [handleOpenFile, selectedSession?.id]);
+ 
+   const handleOpenTerminal = useCallback((cwd: string) => {
++    setReviewPanelActive(false);
+     const existing = terminalTabs.find((tab) => tab.cwd === cwd);
+     const tab = existing ?? newTerminalTab(cwd);
+     if (!existing) setTerminalTabs((tabs) => [...tabs, tab]);
+@@ -1161,7 +1167,7 @@ export function AppShell() {
+     const remaining = terminalTabs.filter((item) => item.id !== tab.id);
+     setTerminalTabs((tabs) => tabs.flatMap((item) => item.id !== tab.id ? [item] : replacement ? [replacement] : []));
+     setActiveFileTabId((current) => current !== tab.id ? current : replacement?.id ?? remaining.at(-1)?.id ?? fileTabs.at(-1)?.id ?? null);
+-    if (!replacement && !remaining.length && !fileTabs.length) setRightPanelOpen(false);
++    if (!replacement && !remaining.length && !fileTabs.length && !reviewPanelActive) setRightPanelOpen(false);
+   };
+ 
+   const handleCloseFileTab = useCallback((tabId: string) => {
+@@ -1171,7 +1177,7 @@ export function AppShell() {
+     }
+     setFileTabs((prev) => {
+       const next = prev.filter((t) => t.id !== tabId);
+-      if (next.length === 0 && terminalTabs.length === 0) setRightPanelOpen(false);
++      if (next.length === 0 && terminalTabs.length === 0 && !reviewPanelActive) setRightPanelOpen(false);
+       return next;
+     });
+     setActiveFileTabId((cur) => {
+@@ -1179,7 +1185,7 @@ export function AppShell() {
+       const remaining = fileTabs.filter((t) => t.id !== tabId);
+       return remaining.at(-1)?.id ?? terminalTabs.at(-1)?.id ?? null;
+     });
+-  }, [fileTabs, terminalTabs]);
++  }, [fileTabs, terminalTabs, reviewPanelActive]);
+ 
+   const handleViewFullHistory = useCallback(() => {
+     if (!selectedSession) return;
+@@ -1920,9 +1926,25 @@ export function AppShell() {
+   const renderMainFileToggle = (mobile: boolean) => {
+     const covered = mobile && isNarrowMobile && mobileToolbarMoreOpen;
+     return (
++      <>
+       <button
+         type="button"
+-        onClick={handleRightPanelToggle}
++        onClick={() => {
++          setRightPanelOpen(!(rightPanelOpen && reviewPanelActive));
++          setReviewPanelActive(true);
++          if (isMobile) setSidebarOpen(false);
++        }}
++        aria-controls="file-panel"
++        aria-pressed={rightPanelOpen && reviewPanelActive}
++        title={translate("review.title")}
++        style={{ border: 0, background: rightPanelOpen && reviewPanelActive ? "var(--bg-selected)" : "none", color: "var(--text)", padding: "0 10px", height: TOP_BAR_ICON_BUTTON_SIZE, cursor: "pointer", flexShrink: 0 }}
++      >{translate("review.title")}</button>
++      <button
++        type="button"
++        onClick={() => {
++          if (reviewPanelActive) { setReviewPanelActive(false); setRightPanelOpen(true); }
++          else handleRightPanelToggle();
++        }}
+         disabled={covered}
+         tabIndex={covered ? -1 : undefined}
+         aria-controls="file-panel"
+@@ -1949,6 +1971,7 @@ export function AppShell() {
+           <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="15" y1="3" x2="15" y2="21" />
+         </svg>
+       </button>
++      </>
+     );
+   };
+ 
+@@ -2588,11 +2611,15 @@ export function AppShell() {
+           background: "var(--bg-panel)",
+           borderBottom: "1px solid var(--border)",
+         }}>
++          <button type="button" aria-pressed={reviewPanelActive} onClick={() => setReviewPanelActive(true)}
++            style={{ height: 36, padding: "0 14px", border: 0, borderRight: "1px solid var(--border)", background: reviewPanelActive ? "var(--bg)" : "var(--bg-panel)", color: reviewPanelActive ? "var(--text)" : "var(--text-muted)", cursor: "pointer", flexShrink: 0 }}>
++            {translate("review.title")}
++          </button>
+           <div style={{ flex: 1, overflow: "hidden" }}>
+             <TabBar
+               tabs={panelTabs}
+-              activeTabId={activeFileTabId ?? ""}
+-              onSelectTab={setActiveFileTabId}
++              activeTabId={reviewPanelActive ? "" : activeFileTabId ?? ""}
++              onSelectTab={(id) => { setReviewPanelActive(false); setActiveFileTabId(id); }}
+               onCloseTab={handleCloseFileTab}
+             />
+           </div>
+@@ -2635,7 +2662,7 @@ export function AppShell() {
+ 
+         {/* Only the active viewer is mounted. Lightweight per-tab state is restored on activation. */}
+         <div style={{ flex: 1, minHeight: 0, overflow: "hidden", paddingBottom: "env(safe-area-inset-bottom)" }}>
+-          {activeFileTab?.filePath ? (
++          {reviewPanelActive ? (rightPanelOpen ? <ReviewCompanionPanel key={selectedSession?.id ?? "new"} sessionId={selectedSession?.id ?? null} /> : null) : activeFileTab?.filePath ? (
+             <FileViewer
+               key={`${activeFileTab.id}:${activeFileTab.viewerRevision ?? 0}`}
+               filePath={activeFileTab.filePath}
+@@ -2665,10 +2692,10 @@ export function AppShell() {
+             </div>
+           ) : null}
+           {terminalTabs.map((tab) => (
+-            <div key={tab.id} hidden={tab.id !== activeFileTabId} style={{ width: "100%", height: "100%" }}>
++            <div key={tab.id} hidden={reviewPanelActive || tab.id !== activeFileTabId} style={{ width: "100%", height: "100%" }}>
+               <TerminalPanel
+                 tab={tab}
+-                active={rightPanelOpen && tab.id === activeFileTabId}
++                active={!reviewPanelActive && rightPanelOpen && tab.id === activeFileTabId}
+                 onRestart={() => setTerminalTabs((tabs) => tabs.map((item) => item.id === tab.id ? { ...item, closing: "restart" } : item))}
+                 onClosed={() => handleTerminalClosed(tab)}
+                 onCloseError={() => setTerminalTabs((tabs) => tabs.map((item) => item.id === tab.id ? { ...item, closing: undefined } : item))}
+diff --git a/docs/agents/sessions.md b/docs/agents/sessions.md
+index 5205525..9d6fc45 100644
+--- a/docs/agents/sessions.md
++++ b/docs/agents/sessions.md
+@@ -1,5 +1,11 @@
+ # Sessions, branching and live events
+ 
++## Local Review Companion sidebar patch
++
++`ReviewCompanionPanel` is a right-panel view beside file/terminal tabs. It is keyed by the selected session and unmounts while hidden, so stale requests cannot retain another session's iframe. Its endpoint reads only the active session's `review-companion-pi.bridges.v2` entry; it never starts a model, restores an idle session, or creates a review. A closed/absent wrapper returns an unavailable state and the panel retries while visible.
++
++The local CLI supplies `REVIEW_COMPANION_EMBED_ORIGIN` from its exact loopback host and port. Companion 0.3.6 opts into that one `frame-ancestors` source for Web mode only. Pi Web's existing request/Host/password protection still gates the discovery endpoint; tokens stay in the iframe URL fragment and are not logged. This is a same-machine integration, not a remote proxy. Review uses copy-and-paste; it does not alter the chat draft or send a prompt.
++
+ ## AgentSession lifecycle (`lib/rpc-manager.ts`)
+ - One `AgentSessionWrapper` per session id in `globalThis.__piSessions` (`globalThis` survives Next.js hot reload; a module-level Map does not). Concurrent `startRpcSession()` calls share one start Promise (`globalThis.__piStartLocks`). Idle timeout: 10 minutes (`PI_WEB_IDLE_TIMEOUT_MS`, `0` disables).
+ - Stop cannot cancel a run awaiting a promise that ignores the abort signal (a third-party extension handler or tool): `inner.abort()` never returns. So Stop (`abort`, `abort_bash`) sets `forceShutdownOnIdle` and arms the idle timer, shutting the wrapper down one idle timeout after the first Stop even while it runs. Later commands (a reload's `get_tools`, Stop again) must not push that deadline back; with `PI_WEB_IDLE_TIMEOUT_MS=0` it still arms, at 10 minutes.
+diff --git a/lib/i18n/messages/en.ts b/lib/i18n/messages/en.ts
+index e4a2a1f..b6be7d4 100644
+--- a/lib/i18n/messages/en.ts
++++ b/lib/i18n/messages/en.ts
+@@ -5,6 +5,14 @@ export const enLocale: LocalePlugin = {
+   id: "en",
+   label: "English",
+   messages: {
++    "review.title": "Review",
++    "review.loading": "Connecting to the review panel…",
++    "review.no_session": "Select or start a conversation to view its review.",
++    "review.inactive": "The review connection is not ready. Run /review in this conversation; use a tool preset other than Chat only.",
++    "review.not_installed": "The review extension is not loaded. Install the companion package, then restart Pi Web.",
++    "review.origin_mismatch": "Embedding is unavailable. Restart the sidebar version and use its exact local browser address.",
++    "review.request_failed": "Could not connect to the review panel. Retry or run /review for a separate link.",
++    "review.retry": "Retry",
+     "common.ok": "OK",
+     "common.language": "Language",
+     "common.models": "Models",
+diff --git a/lib/i18n/messages/zh-CN.ts b/lib/i18n/messages/zh-CN.ts
+index c8f3f7e..1359aa9 100644
+--- a/lib/i18n/messages/zh-CN.ts
++++ b/lib/i18n/messages/zh-CN.ts
+@@ -5,6 +5,14 @@ export const zhCNLocale: LocalePlugin = {
+   id: "zh-CN",
+   label: "简体中文",
+   messages: {
++    "review.title": "回顾",
++    "review.loading": "正在连接回顾面板…",
++    "review.no_session": "选择或开始一个聊天后，查看它对应的回顾。",
++    "review.inactive": "回顾连接尚未就绪，请在当前聊天运行 /review，并使用非 Chat only 的工具预设。",
++    "review.not_installed": "当前会话未加载回顾扩展，请安装回顾插件后重启 Pi Web。",
++    "review.origin_mismatch": "当前连接不允许内嵌。请重启侧栏版，并使用启动时显示的完整本机地址。",
++    "review.request_failed": "暂时无法连接回顾面板。可重试，或运行 /review 获取独立链接。",
++    "review.retry": "重试",
+     "common.ok": "确定",
+     "common.language": "语言",
+     "common.models": "模型",
+diff --git a/lib/i18n/messages/zh-TW.ts b/lib/i18n/messages/zh-TW.ts
+index 392c45e..7821a12 100644
+--- a/lib/i18n/messages/zh-TW.ts
++++ b/lib/i18n/messages/zh-TW.ts
+@@ -5,6 +5,14 @@ export const zhTWLocale: LocalePlugin = {
+   id: "zh-TW",
+   label: "繁體中文",
+   messages: {
++    "review.title": "回顧",
++    "review.loading": "正在連線回顧面板…",
++    "review.no_session": "選擇或開始一個聊天後，查看它對應的回顧。",
++    "review.inactive": "回顧連線尚未就緒，請在目前聊天執行 /review，並使用非 Chat only 的工具預設。",
++    "review.not_installed": "目前工作階段未載入回顧擴充，請安裝回顧外掛後重新啟動 Pi Web。",
++    "review.origin_mismatch": "目前連線不允許內嵌。請重新啟動側欄版，並使用啟動時顯示的完整本機位址。",
++    "review.request_failed": "暫時無法連線回顧面板。可重試，或執行 /review 取得獨立連結。",
++    "review.retry": "重試",
+     "common.ok": "確定",
+     "common.language": "語言",
+     "common.models": "模型",
+diff --git a/app/api/agent/[id]/review-companion/route.ts b/app/api/agent/[id]/review-companion/route.ts
+new file mode 100644
+index 0000000..5e36b10
+--- /dev/null
++++ b/app/api/agent/[id]/review-companion/route.ts
+@@ -0,0 +1,30 @@
++import { NextResponse } from "next/server";
++import { getRpcSession } from "@/lib/rpc-manager";
++import { reviewPanelUrl } from "@/lib/review-companion";
++
++type Registry = { peek(context: unknown): {
++  browserUrl: string;
++  session?: string;
++  connection?: { embedOrigin?: string };
++} | undefined };
++
++// Read a live extension's connection only. Never start a model or create a review.
++export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
++  const { id } = await params;
++  const reply = (data: unknown, status = 200) => NextResponse.json(data, {
++    status, headers: { "Cache-Control": "private, no-store", "Referrer-Policy": "no-referrer" },
++  });
++  const session = getRpcSession(id);
++  if (!session?.isAlive()) return reply({ code: "inactive" }, 404);
++  const registry = Reflect.get(globalThis, Symbol.for("review-companion-pi.bridges.v2")) as Registry | undefined;
++  if (!registry) return reply({ code: "not_installed" }, 404);
++  try {
++    const bridge = registry.peek({ mode: "rpc", cwd: session.cwd, sessionManager: session.inner.sessionManager });
++    if (!bridge?.connection || !bridge.session) return reply({ code: "inactive" }, 409);
++    const data = { sessionId: id, url: bridge.browserUrl, embedOrigin: bridge.connection.embedOrigin };
++    // Next may use localhost internally; proxy.ts already verifies the browser's Host.
++    const origin = new URL(req.url).protocol + "//" + req.headers.get("host");
++    if (!reviewPanelUrl(data, id, origin)) return reply({ code: "origin_mismatch" }, 409);
++    return reply(data);
++  } catch { return reply({ code: "inactive" }, 409); }
++}
+diff --git a/components/ReviewCompanionPanel.tsx b/components/ReviewCompanionPanel.tsx
+new file mode 100644
+index 0000000..16882de
+--- /dev/null
++++ b/components/ReviewCompanionPanel.tsx
+@@ -0,0 +1,46 @@
++"use client";
++import { useEffect, useState } from "react";
++import { useI18n } from "@/hooks/useI18n";
++import { reviewPanelUrl } from "@/lib/review-companion";
++
++export function ReviewCompanionPanel({ sessionId }: { sessionId: string | null }) {
++  const { t } = useI18n();
++  const [view, setView] = useState<{ url?: string; code: string }>({ code: "loading" });
++  const [revision, setRevision] = useState(0);
++  useEffect(() => {
++    if (!sessionId) return;
++    let cancelled = false;
++    let timer: ReturnType<typeof setTimeout>;
++    let controller: AbortController | undefined;
++    const update = async () => {
++      controller = new AbortController();
++      const deadline = setTimeout(() => controller?.abort(), 12000);
++      try {
++        const response = await fetch(`/api/agent/${encodeURIComponent(sessionId)}/review-companion`, {
++          cache: "no-store", signal: controller.signal,
++        });
++        const data = await response.json();
++        const url = response.ok ? reviewPanelUrl(data, sessionId, window.location.origin) : null;
++        if (!cancelled) setView(url ? { url, code: "ready" } : { code: data.code || "request_failed" });
++      } catch { if (!cancelled) setView({ code: "request_failed" }); }
++      finally {
++        clearTimeout(deadline);
++        if (!cancelled) timer = setTimeout(update, 5000);
++      }
++    };
++    void update();
++    return () => { cancelled = true; clearTimeout(timer); controller?.abort(); };
++  }, [sessionId, revision]);
++  const code = !sessionId ? "no_session" : view.code;
++  const known = ["loading", "no_session", "inactive", "not_installed", "origin_mismatch"];
++  return <section aria-label={t("review.title")} style={{ height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
++    {view.url && sessionId ? <iframe
++      title={t("review.title")} src={view.url} referrerPolicy="no-referrer"
++      sandbox="allow-scripts allow-same-origin allow-downloads" allow="clipboard-write"
++      style={{ width: "100%", flex: 1, minHeight: 0, border: 0, background: "var(--bg)" }}
++    /> : <div role="status" style={{ padding: 20, color: "var(--text-muted)", fontSize: 13, lineHeight: 1.7 }}>
++      <p>{t(`review.${known.includes(code) ? code : "request_failed"}`)}</p>
++      <button type="button" onClick={() => setRevision(v => v + 1)}>{t("review.retry")}</button>
++    </div>}
++  </section>;
++}
+diff --git a/lib/review-companion.test.mjs b/lib/review-companion.test.mjs
+new file mode 100644
+index 0000000..de1731b
+--- /dev/null
++++ b/lib/review-companion.test.mjs
+@@ -0,0 +1,17 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { reviewPanelUrl } from './review-companion.ts';
++
++const origin = 'http://127.0.0.1:30141';
++const data = { sessionId:'one', embedOrigin:origin, url:'http://127.0.0.1:32123/#token=abcdefghijklmnopqrstuvwxyz' };
++test('embedded review accepts only the selected session and exact parent origin', () => {
++  assert.equal(reviewPanelUrl(data,'one',origin), data.url);
++  assert.equal(reviewPanelUrl(data,'two',origin), null);
++  assert.equal(reviewPanelUrl(data,'one','http://127.0.0.1:9999'), null);
++  assert.equal(reviewPanelUrl({...data,embedOrigin:undefined},'one',origin), null);
++});
++test('review panel refuses remote URLs, paths, query tokens and credentials', () => {
++  for (const url of ['https://example.com/#token=abcdefghijklmnopqrstuvwxyz','http://127.0.0.1:32123/evil#token=abcdefghijklmnopqrstuvwxyz','http://user:pass@127.0.0.1:32123/#token=abcdefghijklmnopqrstuvwxyz','http://127.0.0.1:32123/?token=abcdefghijklmnopqrstuvwxyz','javascript:alert(1)']) {
++    assert.equal(reviewPanelUrl({...data,url},'one',origin), null);
++  }
++});
+diff --git a/lib/review-companion.ts b/lib/review-companion.ts
+new file mode 100644
+index 0000000..5393311
+--- /dev/null
++++ b/lib/review-companion.ts
+@@ -0,0 +1,13 @@
++/** Accept only this session's local companion page, embedded by this exact host. */
++export function reviewPanelUrl(value: unknown, sessionId: string, parentOrigin: string): string | null {
++  if (!value || typeof value !== "object") return null;
++  const data = value as Record<string, unknown>;
++  if (data.sessionId !== sessionId || data.embedOrigin !== parentOrigin || typeof data.url !== "string") return null;
++  try {
++    const url = new URL(data.url);
++    if (url.protocol !== "http:" || url.hostname !== "127.0.0.1" || !url.port
++      || url.username || url.password || url.pathname !== "/" || url.search
++      || !/^#token=[A-Za-z0-9_-]{20,}$/.test(url.hash)) return null;
++    return url.href;
++  } catch { return null; }
++}

@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+exec "${REVIEW_COMPANION_PYTHON:-python3}" "$ROOT/backend/host_mcp.py" --host claude "$@"

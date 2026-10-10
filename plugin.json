@@ -1,0 +1,33 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "review-companion",
+  "version": "0.4.0",
+  "description": "Branch walkthroughs with lightweight file risk highlights; analysis and diagrams stay in conversation.",
+  "author": {
+    "name": "Local developer"
+  },
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "回顾伴随",
+        "shortDescription": "功能分组、文件回顾与风险高亮",
+        "longDescription": "插件只展示功能分组、文件进度和风险短说明。风险分析与核心行为图由独立 skill 在对话完成。",
+        "developerName": "Local developer",
+        "category": "Productivity",
+        "capabilities": [
+          "Read",
+          "Interactive"
+        ],
+        "defaultPrompt": [
+          "梳理开发分支相对主分支的功能变化，并打开回顾总览。",
+          "使用分支风险分析，找出本次改动值得核实的疑点，并高亮对应文件。"
+        ],
+        "brandColor": "#356C58",
+        "composerIcon": "./assets/icon.svg",
+        "logo": "./assets/icon.svg"
+      }
+    }
+  },
+  "repository": "https://github.com/EasyHah/review-companion",
+  "homepage": "https://github.com/EasyHah/review-companion"
+}

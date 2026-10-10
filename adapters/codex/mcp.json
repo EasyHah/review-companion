@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "review_companion": {
+      "command": "python3",
+      "args": [
+        "./backend/host_mcp.py",
+        "--host",
+        "codex"
+      ],
+      "cwd": ".",
+      "env_vars": [
+        "REVIEW_COMPANION_DATA_DIR",
+        "REVIEW_COMPANION_CONFIG",
+        "REVIEW_COMPANION_GIT",
+        "REVIEW_COMPANION_EDITOR"
+      ]
+    }
+  }
+}

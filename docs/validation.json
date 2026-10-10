@@ -1,0 +1,54 @@
+{
+  "version": "0.4.0",
+  "shared_core": true,
+  "features": [
+    "separate conversation skills: branch-risks and behavior-path",
+    "original review workflow and lightweight file risk highlights",
+    "documentation filtering including legacy records",
+    "conservative legacy risk-to-file mapping"
+  ],
+  "checks": {
+    "python": 81,
+    "node": 58,
+    "skills": 3,
+    "skill_format": true,
+    "codex_packaging": true,
+    "release_manifest": true
+  },
+  "native": {
+    "pi": {
+      "entry": "review-pi.mjs",
+      "three_skills_loaded": true,
+      "risk_tool_loaded": true,
+      "model_extensions_settings_preserved": true,
+      "new_session_isolation": true,
+      "model_requests": 0
+    },
+    "claude": {
+      "version": "2.1.201",
+      "tools": 12,
+      "tool_result_roundtrips": 3,
+      "inference": "synthetic loopback only"
+    },
+    "codex": {
+      "skills": 3,
+      "tools": 12,
+      "risk_tool_roundtrip": true,
+      "model_turns": 0
+    },
+    "isolated_install": [
+      "Pi",
+      "Claude Code",
+      "Codex"
+    ]
+  },
+  "cross_host": "Pi writes -> Claude/Codex read -> Codex updates -> Pi Web bridge reads -> Claude clears; progress preserved",
+  "deployment": "General source and release package updated; client installation settings and running processes are not changed by promotion",
+  "pending": [
+    "Real model quality and latency across hosts",
+    "User-owned desktop/clipboard/editor acceptance",
+    "Linux real-machine verification"
+  ],
+  "pi_web": "Existing adapter preserved. This release validates shared bridge compatibility, not a new sidebar UI or restart of the existing instance.",
+  "secrets_included": false
+}

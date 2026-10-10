@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>开发回顾伴随</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7fb;
+      --surface: #ffffff;
+      --surface-soft: #f0f3f9;
+      --line: #dfe5ef;
+      --ink: #182234;
+      --muted: #647188;
+      --accent: #3567d6;
+      --accent-soft: #e9efff;
+      --success: #227552;
+      --success-soft: #e4f5ed;
+      --warn: #9a6415;
+      --warn-soft: #fff2d8;
+      --shadow: 0 12px 32px rgba(40, 61, 103, .08);
+      --focus: 0 0 0 3px rgba(53, 103, 214, .26);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #111722;
+      --surface: #182130;
+      --surface-soft: #202c3e;
+      --line: #314056;
+      --ink: #edf3ff;
+      --muted: #9aa9c0;
+      --accent: #8eacff;
+      --accent-soft: #263a6d;
+      --success: #6dd4a4;
+      --success-soft: #143d31;
+      --warn: #f2c86a;
+      --warn-soft: #4e3b1c;
+      --shadow: 0 12px 32px rgba(0, 0, 0, .26);
+      --focus: 0 0 0 3px rgba(142, 172, 255, .3);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      min-width: 320px;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+    button, select, textarea { font: inherit; }
+    button, select { color: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, select:focus-visible, textarea:focus-visible { outline: none; box-shadow: var(--focus); }
+    .shell { max-width: 980px; margin: 0 auto; padding: 28px 20px 54px; }
+    .topbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; margin-bottom: 22px; }
+    .eyebrow { color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    h1, h2, h3, p { margin: 0; }
+    h1 { font-size: clamp(24px, 4vw, 34px); letter-spacing: -.03em; line-height: 1.15; margin-top: 4px; }
+    h2 { font-size: 18px; letter-spacing: -.01em; }
+    h3 { font-size: 15px; }
+    .top-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .icon-button, .ghost-button, .primary-button, .tiny-button {
+      border: 1px solid var(--line); border-radius: 10px; background: var(--surface); min-height: 36px; padding: 7px 12px;
+    }
+    .icon-button { width: 38px; padding: 0; font-size: 18px; }
+    .ghost-button:hover, .icon-button:hover, .tiny-button:hover { border-color: var(--accent); color: var(--accent); }
+    .primary-button { border-color: var(--accent); background: var(--accent); color: #fff; font-weight: 650; }
+    .primary-button:hover { filter: brightness(1.08); }
+    .tiny-button { min-height: 30px; padding: 4px 9px; font-size: 12px; }
+    button[disabled] { cursor: wait; opacity: .55; }
+    .review-bar, .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); }
+    .review-bar { display: flex; align-items: center; gap: 14px; padding: 14px 16px; margin-bottom: 18px; }
+    .review-bar label { color: var(--muted); white-space: nowrap; font-size: 12px; font-weight: 700; }
+    #review-selector { width: 100%; min-height: 36px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); padding: 5px 9px; }
+    .status { min-height: 24px; color: var(--muted); font-size: 12px; margin: -6px 0 12px; overflow-wrap: anywhere; }
+    .status[data-kind="error"] { color: #b04444; }
+    .status[data-kind="success"] { color: var(--success); }
+    .status[data-kind="warn"] { color: var(--warn); }
+    .overview { display: grid; grid-template-columns: 1.3fr .7fr; gap: 18px; margin-bottom: 18px; }
+    .card { padding: 20px; }
+    .overview-main { min-height: 180px; }
+    .card-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .title-wrap { display: flex; align-items: center; gap: 9px; min-width: 0; }
+    .title-wrap h2 { overflow-wrap: anywhere; }
+    .repo-line { color: var(--muted); margin-bottom: 18px; overflow-wrap: anywhere; }
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+    .chip { border: 1px solid var(--line); border-radius: 999px; color: var(--muted); padding: 4px 9px; font-size: 11px; overflow-wrap: anywhere; }
+    .chip strong { color: var(--ink); font-weight: 650; }
+    .progress-card { display: flex; flex-direction: column; justify-content: space-between; }
+    .progress-number { font-size: 38px; font-weight: 700; letter-spacing: -.05em; line-height: 1; }
+    .progress-label { color: var(--muted); margin-top: 6px; }
+    .progress-track { background: var(--surface-soft); height: 9px; border-radius: 999px; overflow: hidden; margin-top: 22px; }
+    .progress-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), #6f8feb); border-radius: inherit; transition: width .25s ease; }
+    .next-card { margin-bottom: 18px; border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); background: color-mix(in srgb, var(--accent-soft) 35%, var(--surface)); }
+    .next-inner { display: flex; justify-content: space-between; align-items: center; gap: 18px; }
+    .next-path { font-weight: 700; overflow-wrap: anywhere; }
+    .next-meta { color: var(--muted); font-size: 12px; margin-top: 4px; }
+    .section { margin-top: 20px; }
+    .section-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+    .section-heading p { color: var(--muted); font-size: 12px; }
+    .feature-list { display: grid; gap: 10px; }
+    .feature { overflow: hidden; }
+    .feature-toggle { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; width: 100%; border: 0; background: transparent; padding: 15px 16px; text-align: left; }
+    .feature-toggle:hover { background: var(--surface-soft); }
+    .chevron { width: 20px; color: var(--muted); transition: transform .18s ease; }
+    .feature[data-expanded="true"] .chevron { transform: rotate(90deg); }
+    .feature-summary { min-width: 0; }
+    .feature-summary p { color: var(--muted); margin-top: 2px; overflow-wrap: anywhere; }
+    .feature-count { color: var(--muted); font-size: 12px; white-space: nowrap; }
+    .feature-body { border-top: 1px solid var(--line); padding: 4px 16px 15px 48px; }
+    .feature-description { margin: 0 16px 15px 48px; }
+    .file-list { display: grid; gap: 8px; margin-top: 10px; }
+    .file-row { border: 1px solid var(--line); border-radius: 11px; padding: 12px; background: var(--surface); }
+    .file-main { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; }
+    .file-path { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; overflow-wrap: anywhere; }
+    .file-old { color: var(--muted); display: block; margin-top: 2px; }
+    .file-responsibility, .conclusion, .conclusion-note { color: var(--muted); font-size: 12px; margin-top: 8px; overflow-wrap: anywhere; }
+    .conclusion-note summary { cursor: pointer; color: var(--muted); }
+    .conclusion-note p { margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .file-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 11px; }
+    .status-pill { flex: 0 0 auto; border-radius: 999px; padding: 3px 8px; font-size: 11px; white-space: nowrap; }
+    .status-pill.done { background: var(--success-soft); color: var(--success); }
+    .status-pill.todo { background: var(--surface-soft); color: var(--muted); }
+    .load-more { margin-top: 10px; }
+    .empty, .notice { border: 1px dashed var(--line); border-radius: 14px; padding: 24px; text-align: center; color: var(--muted); }
+    .empty strong, .notice strong { display: block; color: var(--ink); font-size: 15px; margin-bottom: 5px; }
+    .external-card, .prompt-card { margin-top: 18px; }
+    .prompt-card textarea { width: 100%; min-height: 132px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-soft); color: var(--ink); padding: 10px; resize: vertical; }
+    .prompt-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
+    .command { display: block; margin-top: 8px; padding: 10px; background: var(--surface-soft); border-radius: 9px; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; user-select: all; }
+    .hidden { display: none !important; }
+    @media (max-width: 700px) {
+      .shell { padding: 20px 13px 40px; }
+      .topbar, .review-bar, .next-inner { align-items: stretch; flex-direction: column; }
+      .top-actions { justify-content: flex-end; }
+      .overview { grid-template-columns: 1fr; }
+      .feature-body { padding-left: 16px; }
+      .feature-description { margin-left: 16px; }
+      .file-main { flex-direction: column; gap: 7px; }
+    }
+    .file-row.has-risk { border-left:4px solid var(--warn);background:var(--warn-soft); }
+    .file-risk-notes { margin:10px 0;color:var(--warn); }
+    .file-risk-notes summary { cursor:pointer;font-weight:600; }
+    .file-risk-notes li { overflow-wrap:anywhere;margin:6px 0; }
+    .feature-risk { color:var(--warn);font-size:12px;margin-right:10px; }
+  </style>
+</head>
+<body>
+  <main class="shell" id="app">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">Review companion</div>
+        <h1>开发回顾</h1>
+      </div>
+      <div class="top-actions">
+        <button class="ghost-button" id="open-project" type="button" disabled title="打开本次回顾对应的项目。项目树是当前工作区；源码与 Diff 仍使用固定提交。">在 VS Code 打开项目</button>
+        <button class="icon-button" id="theme-toggle" type="button" aria-label="切换明暗主题" title="切换明暗主题">☾</button>
+        <button class="ghost-button" id="refresh-button" type="button">刷新</button>
+      </div>
+    </header>
+
+    <section class="review-bar" aria-label="选择回顾">
+      <label for="review-selector">当前回顾</label>
+      <select id="review-selector" aria-label="选择回顾"></select>
+    </section>
+    <p class="status" id="host-session">正在连接宿主…</p>
+    <p class="status" id="status" role="status" aria-live="polite"></p>
+
+    <section id="empty-state" class="empty hidden" aria-live="polite">
+      <strong>还没有可显示的回顾</strong>
+      <span>请在开发回顾 skill 中创建一次回顾，面板会在记录保存后显示功能总览。</span>
+    </section>
+    <section id="host-missing" class="notice hidden" aria-live="polite">
+      <strong>请使用回顾链接打开</strong>
+      <span>当前页面未连接回顾服务。请在当前聊天打开回顾总览，再使用返回的浏览器链接。</span>
+    </section>
+
+    <div id="content" class="hidden">
+      <section class="overview" aria-label="回顾总览">
+        <article class="card overview-main">
+          <div class="card-heading">
+            <div class="title-wrap"><span aria-hidden="true">✦</span><h2 id="review-title">—</h2></div>
+          </div>
+          <p class="repo-line" id="comparison-line">—</p>
+          <div class="chips" id="comparison-chips"></div>
+        </article>
+        <article class="card progress-card">
+          <div>
+            <div class="progress-number" id="progress-number">0/0</div>
+            <p class="progress-label">文件已回顾</p>
+          </div>
+          <div class="progress-track" aria-hidden="true"><div class="progress-fill" id="progress-fill"></div></div>
+        </article>
+      </section>
+
+      <section id="next-card" class="card next-card hidden" aria-label="下一份文件">
+        <div class="next-inner">
+          <div>
+            <div class="eyebrow">接下来</div>
+            <p class="next-path" id="next-path">—</p>
+            <p class="next-meta" id="next-meta">—</p>
+          </div>
+          <button class="primary-button js-action" data-action="next" id="next-action" type="button">准备下一份问题</button>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="features-heading">
+        <div class="section-heading"><h2 id="features-heading">功能概览</h2><p>展开后查看文件职责与回顾进度</p></div>
+        <div class="feature-list" id="feature-list"></div>
+      </section>
+
+      <section id="prompt-card" class="card prompt-card hidden" aria-label="准备对话问题">
+        <div class="card-heading"><h2>问题已准备好</h2><span class="status-pill todo" id="prompt-status">请复制后发送</span></div>
+        <p class="file-responsibility" id="prompt-context"></p>
+        <textarea id="prompt-text" readonly aria-label="待发送的问题"></textarea>
+        <div class="prompt-actions"><button class="ghost-button" id="copy-prompt" type="button">复制问题</button><button class="tiny-button" id="close-prompt" type="button">收起</button></div>
+      </section>
+
+      <section id="external-card" class="card external-card hidden" aria-label="固定版本查看入口">
+        <div class="card-heading"><h2 id="external-title">固定版本入口</h2><button class="tiny-button" id="close-external" type="button">收起</button></div>
+        <p class="file-responsibility" id="external-description"></p>
+        <span class="command" id="external-command" tabindex="0"></span>
+        <div class="prompt-actions"><button class="ghost-button" id="copy-command" type="button">复制命令</button></div>
+      </section>
+    </div>
+  </main>
+
+  <script src="/browser-bridge.js"></script>
+  <script>
+  (function (root) {
+    'use strict';
+
+    function asText(value, fallback) {
+      return value === null || value === undefined || value === '' ? (fallback || '') : String(value);
+    }
+    function commitSubject(comparison, side) {
+      var subject = asText(comparison[side + '_subject']);
+      return subject && subject !== asText(comparison[side + '_sha']) ? subject : (side === 'base' ? '基准提交（说明暂缺）' : '目标提交（说明暂缺）');
+    }
+    function comparisonTooltip(comparison) {
+      return '固定目标：' + asText(comparison.target_sha, '未知') + '\n固定基准：' + asText(comparison.base_sha, '未知');
+    }
+    function readableReviewTitle(review) {
+      var c = review.comparison || {};
+      if (c.base_subject || c.target_subject) return commitSubject(c, 'target') + ' 相对 ' + commitSubject(c, 'base');
+      var title = asText(review.title);
+      var rawHashTitle = /^\s*[a-f0-9]{40,64}(?:\s+相对\s+[a-f0-9]{40,64})?\s*$/i.test(title);
+      return title && !rawHashTitle ? title : commitSubject(c, 'target') + ' 相对 ' + commitSubject(c, 'base');
+    }
+    function safeNumber(value) {
+      var n = Number(value);
+      return Number.isFinite(n) && n >= 0 ? n : 0;
+    }
+    function progressPercent(reviewed, total) {
+      var all = safeNumber(total);
+      return all ? Math.min(100, Math.round((safeNumber(reviewed) / all) * 100)) : 0;
+    }
+    function progressText(reviewed, total) {
+      return safeNumber(reviewed) + '/' + safeNumber(total);
+    }
+    function nextFileFor(review) {
+      return review && review.next_file ? review.next_file : null;
+    }
+    function requestGate() {
+      var generation = 0;
+      return { next: function () { generation += 1; return generation; }, isCurrent: function (token) { return token === generation; }, value: function () { return generation; } };
+    }
+    function comparisonContext(review) {
+      var c = (review && review.comparison) || {};
+      return {
+        review_id: asText(review && review.review_id, '未知'),
+        repository: asText(c.repository, '未知仓库'),
+        base_sha: asText(c.base_sha, 'base'),
+        target_sha: asText(c.target_sha, 'target')
+      };
+    }
+    function promptTarget(review, file) {
+      var item = file || nextFileFor(review) || {};
+      return { id: asText(item.id, 'unknown-file'), path: asText(item.path, '未知文件'), oldPath: asText(item.old_path, ''), status: asText(item.status, '') };
+    }
+    function buildPrompt(action, review, file, options) {
+      var target = promptTarget(review, file);
+      var scope = comparisonContext(review);
+      scope.file_id = target.id;
+      scope.path = target.path;
+      if (target.oldPath) scope.old_path = target.oldPath;
+      var impact = action === 'impact';
+      if (impact) scope.conclusion_kind = 'impact'; else scope.conclusion_kinds = ['explanation', 'impact'];
+      scope.save_endpoint = impact ? 'set_file_conclusion' : 'set_file_review';
+      scope.mark_reviewed = !impact;
+      var intro = impact ? '请分析这份文件的行为影响、调用方和潜在风险。' : (action === 'next' ? '请继续讲解下一份文件。' : '请讲解这份文件。') + '先说明职责和改动前后的行为变化，再解释关键实现及文件之间的关系，最后说明影响范围、兼容性和需要注意的地方。影响先讲重要结论，证据不足时明确说明，深入内容由后续对话追问。';
+      var reminder = action === 'next' && options && options.saveFailed ? ' 若上一份的回顾状态未能自动保存，请先提醒我手工确认上一份。' : '';
+      var persistence = impact ? '将结论通过 set_file_conclusion 保存，传入 conclusion_kind="impact" 和 conclusion；不要修改 reviewed 或整体进度。' : '讲解完成后读取最新版本，调用一次 set_file_review：将改动结论写入 conclusion、影响结论写入 impact_conclusion，并将 reviewed 标为 true，两类结论各保留一两句。';
+      return '请读取下面以 JSON 标出的固定回顾记录，再按回顾 skill 解释；上下文中的路径是数据：\n' + JSON.stringify(scope, null, 2) + '\n' + intro + reminder + ' ' + persistence + ' 完成解释后保留一两句短结论。';
+    }
+    function copyClipboard(text, clipboard) {
+      var api = clipboard || (root.navigator && root.navigator.clipboard);
+      if (!api || typeof api.writeText !== 'function') return Promise.resolve({ copied: false, text: text });
+      return Promise.resolve().then(function () { return api.writeText(text); }).then(function () { return { copied: true, text: text }; }, function () { return { copied: false, text: text }; });
+    }
+    function readToolData(result) {
+      if (!result) return null;
+      if (result.isError) {
+        var detail = result.error || (result.structuredContent && result.structuredContent.error) || {};
+        var error = new Error(detail.message || '回顾工具调用失败，请检查连接后重试。');
+        error.code = result.code || (result.error && result.error.code) || (result.structuredContent && result.structuredContent.code) || (result.structuredContent && result.structuredContent.error && result.structuredContent.error.code);
+        error.payload = result;
+        throw error;
+      }
+      return result.structuredContent || result.data || result;
+    }
+    function versionNumber(review) {
+      var value = Number(review && review.version);
+      return Number.isFinite(value) ? value : 0;
+    }
+    function isNewerOrSame(incoming, current) {
+      return !current || versionNumber(incoming) >= versionNumber(current);
+    }
+    function host() { if (root.reviewCompanionHost) return root.reviewCompanionHost; return root.openai && typeof root.openai.callTool === 'function' ? root.openai : null; }
+
+    root.ReviewCompanion = {
+      asText: asText,
+      progressPercent: progressPercent,
+      progressText: progressText,
+      nextFileFor: nextFileFor,
+      requestGate: requestGate,
+      comparisonContext: comparisonContext,
+      buildPrompt: buildPrompt,
+      copyPrompt: copyClipboard,
+      readToolData: readToolData,
+      isNewerOrSame: isNewerOrSame
+    };
+
+    if (!root.document) return;
+    var doc = root.document;
+    var gate = requestGate();
+    var state = { review: null, reviewId: null, featureItems: {}, expanded: {}, pollTimer: null, pollPending: false, pendingMark: {}, mutationEpoch: 0, saveFailed: false, prompt: '', promptToken: 0, projectPending: null, external: '', activeFeatureToken: {} };
+    var el = {};
+    [
+      'status', 'empty-state', 'host-missing', 'content', 'review-selector', 'theme-toggle', 'refresh-button', 'open-project', 'review-title', 'comparison-line',
+      'comparison-chips', 'progress-number', 'progress-fill', 'next-card', 'next-path', 'next-meta', 'next-action', 'feature-list',
+      'prompt-card', 'prompt-text', 'prompt-context', 'copy-prompt', 'close-prompt', 'prompt-status', 'external-card', 'external-title',
+      'external-description', 'external-command', 'copy-command', 'close-external'
+    ].forEach(function (id) { el[id] = doc.getElementById(id); });
+
+    function setStatus(message, kind) { el.status.textContent = message || ''; el.status.dataset.kind = kind || ''; }
+    function show(id, visible) { if (el[id]) el[id].classList.toggle('hidden', !visible); }
+    function setTheme(theme) { doc.documentElement.dataset.theme = theme; el['theme-toggle'].textContent = theme === 'dark' ? '☀' : '☾'; el['theme-toggle'].setAttribute('aria-label', theme === 'dark' ? '切换浅色主题' : '切换深色主题'); }
+    function normalizeReview(data) {
+      if (!data || !data.review_id) return null;
+      data.features = Array.isArray(data.features) ? data.features : [];
+      data.progress = data.progress || { reviewed: 0, total: 0 };
+      data.recent_reviews = Array.isArray(data.recent_reviews) ? data.recent_reviews : [];
+      return data;
+    }
+    function errorMessage(error) {
+      if (error && error.code === 'version_conflict') return '记录已被更新，正在刷新最新进度；请再次确认这份文件。';
+      return error && error.message ? error.message : '读取回顾记录失败，请稍后重试。';
+    }
+    function call(name, args) {
+      var h = host();
+      if (!h) return Promise.reject(Object.assign(new Error('host_missing'), { code: 'host_missing' }));
+      return Promise.resolve().then(function () { return h.callTool(name, args || {}); }).then(readToolData);
+    }
+    function renderSelector() {
+      var reviews = state.review && state.review.recent_reviews ? state.review.recent_reviews.slice() : [];
+      if (state.review && state.review.review_id && !reviews.some(function (r) { return r.review_id === state.review.review_id; })) reviews.unshift(state.review);
+      el['review-selector'].textContent = '';
+      reviews.forEach(function (item) { var option = doc.createElement('option'); option.value = asText(item.review_id); option.textContent = readableReviewTitle(item); option.title = comparisonTooltip(item.comparison || {}); option.setAttribute('aria-label', option.textContent + '；' + option.title); el['review-selector'].appendChild(option); });
+      if (state.reviewId) el['review-selector'].value = state.reviewId;
+      el['review-selector'].title = comparisonTooltip(state.review.comparison || {});
+      el['review-selector'].disabled = !reviews.length;
+    }
+    function renderOverview() {
+      var review = state.review;
+      el['open-project'].disabled = !review || state.projectPending === gate.value();
+      if (!review) { show('content', false); show('empty-state', true); return; }
+      show('empty-state', false); show('content', true); show('host-missing', false);
+      var c = review.comparison || {};
+      function message(side) {
+        var span = doc.createElement('span'); span.textContent = commitSubject(c, side); span.title = asText(c[side + '_sha'], '未知提交');
+        span.setAttribute('aria-label', span.textContent + '；提交 ' + span.title); return span;
+      }
+      el['review-title'].textContent = '';
+      el['review-title'].appendChild(message('target')); el['review-title'].appendChild(doc.createTextNode(' 相对 ')); el['review-title'].appendChild(message('base'));
+      el['comparison-line'].textContent = asText(c.repository, '未知仓库') + ' · ';
+      el['comparison-line'].appendChild(message('base')); el['comparison-line'].appendChild(doc.createTextNode(' → ')); el['comparison-line'].appendChild(message('target'));
+      el['comparison-chips'].textContent = '';
+      [['固定基准', 'base'], ['固定目标', 'target']].forEach(function (pair) { var chip = doc.createElement('span'); chip.className = 'chip'; chip.title = asText(c[pair[1] + '_sha'], '未知提交'); chip.setAttribute('aria-label', pair[0] + '：' + commitSubject(c, pair[1]) + '；提交 ' + chip.title); var strong = doc.createElement('strong'); strong.textContent = pair[0] + ' '; chip.appendChild(strong); chip.appendChild(message(pair[1])); el['comparison-chips'].appendChild(chip); });
+      var p = review.progress || {};
+      el['progress-number'].textContent = progressText(p.reviewed, p.total);
+      el['progress-fill'].style.width = progressPercent(p.reviewed, p.total) + '%';
+      el['progress-fill'].setAttribute('aria-label', progressText(p.reviewed, p.total));
+      renderSelector(); renderNext(); renderFeatures();
+    }
+    function renderNext() {
+      var item = nextFileFor(state.review);
+      show('next-card', Boolean(item));
+      if (!item) return;
+      el['next-path'].textContent = asText(item.path, '未知文件');
+      el['next-meta'].textContent = asText(item.responsibility, item.status === 'reviewed' ? '已回顾' : '等待回顾');
+      el['next-action'].dataset.fileId = asText(item.id);
+    }
+    function featureProgress(feature) { return progressText(feature.reviewed, feature.total); }
+    function renderFeatures() {
+      el['feature-list'].textContent = '';
+      (state.review.features || []).forEach(function (feature) {
+        var article = doc.createElement('article'); article.className = 'card feature'; article.dataset.featureId = asText(feature.id); article.dataset.expanded = state.expanded[feature.id] ? 'true' : 'false';
+        var toggle = doc.createElement('button'); toggle.className = 'feature-toggle'; toggle.type = 'button'; toggle.dataset.featureId = asText(feature.id); toggle.setAttribute('aria-expanded', state.expanded[feature.id] ? 'true' : 'false');
+        var chevron = doc.createElement('span'); chevron.className = 'chevron'; chevron.textContent = '›'; chevron.setAttribute('aria-hidden', 'true'); toggle.appendChild(chevron);
+        var summary = doc.createElement('span'); summary.className = 'feature-summary'; var heading = doc.createElement('h3'); heading.textContent = asText(feature.title, '未命名功能'); summary.appendChild(heading); toggle.appendChild(summary);
+        if (feature.risk_count) { var riskCount = doc.createElement('span'); riskCount.className = 'feature-risk'; riskCount.textContent = feature.risk_count + ' 份文件有风险线索'; summary.appendChild(riskCount); } var count = doc.createElement('span'); count.className = 'feature-count'; count.textContent = featureProgress(feature); toggle.appendChild(count); article.appendChild(toggle);
+        var description = renderDescription(feature); description.className += ' feature-description'; article.appendChild(description);
+        if (state.expanded[feature.id]) { var body = doc.createElement('div'); body.className = 'feature-body'; var list = doc.createElement('div'); list.className = 'file-list'; var items = state.featureItems[feature.id]; if (!items) { var loading = doc.createElement('p'); loading.className = 'file-responsibility'; loading.textContent = '正在读取文件…'; list.appendChild(loading); } else if (!items.length) { var none = doc.createElement('p'); none.className = 'file-responsibility'; none.textContent = '这个功能暂无文件记录。'; list.appendChild(none); } else items.forEach(function (file) { list.appendChild(renderFile(file)); }); body.appendChild(list); if (items && state.featureItems[feature.id + ':next'] !== null) { var hasMore = state.featureItems[feature.id + ':next']; if (hasMore !== null && hasMore !== undefined) { var more = doc.createElement('button'); more.className = 'tiny-button load-more'; more.type = 'button'; more.dataset.loadFeature = asText(feature.id); more.textContent = '加载更多'; body.appendChild(more); } } article.appendChild(body); }
+        el['feature-list'].appendChild(article);
+      });
+    }
+    function renderFile(file) {
+      var row = doc.createElement('article'); row.className = 'file-row' + (file.risk_notes && file.risk_notes.length ? ' has-risk' : ''); row.dataset.fileId = asText(file.id);
+      var main = doc.createElement('div'); main.className = 'file-main'; var pathWrap = doc.createElement('div'); var path = doc.createElement('div'); path.className = 'file-path'; path.textContent = asText(file.path, '未知文件'); pathWrap.appendChild(path); if (file.old_path) { var old = doc.createElement('span'); old.className = 'file-old'; old.textContent = '原路径：' + asText(file.old_path); pathWrap.appendChild(old); } main.appendChild(pathWrap); var pill = doc.createElement('span'); pill.className = 'status-pill ' + (file.reviewed ? 'done' : 'todo'); pill.textContent = file.reviewed ? '已回顾' : '未回顾'; main.appendChild(pill); row.appendChild(main);
+      var responsibility = doc.createElement('p'); responsibility.className = 'file-responsibility'; responsibility.textContent = asText(file.responsibility, '尚未补充文件职责。'); row.appendChild(responsibility);
+      if (file.risk_notes && file.risk_notes.length) {
+        var riskBox = doc.createElement('details'); riskBox.className = 'file-risk-notes';
+        var riskLabel = doc.createElement('summary'); riskLabel.textContent = file.risk_notes.length + ' 条风险线索 · 详见对话'; riskBox.appendChild(riskLabel);
+        var riskList = doc.createElement('ul'); file.risk_notes.forEach(function (note) { var item = doc.createElement('li'); item.textContent = note; riskList.appendChild(item); });
+        riskBox.appendChild(riskList); row.appendChild(riskBox);
+      }
+      var savedNote = renderReviewConclusion(file); if (savedNote) row.appendChild(savedNote);
+      var actions = doc.createElement('div'); actions.className = 'file-actions'; [['explain', '请解释']].forEach(function (pair) { var action = doc.createElement('button'); action.className = 'tiny-button js-action'; action.type = 'button'; action.dataset.action = pair[0]; action.dataset.fileId = asText(file.id); action.textContent = pair[1]; actions.appendChild(action); }); var mark = doc.createElement('button'); mark.className = 'tiny-button js-mark'; mark.type = 'button'; mark.dataset.fileId = asText(file.id); mark.dataset.reviewed = file.reviewed ? 'false' : 'true'; mark.disabled = Boolean(state.pendingMark[file.id]); mark.textContent = file.reviewed ? '标为未回顾' : '标为已回顾'; actions.appendChild(mark); var source = doc.createElement('button'); source.className = 'tiny-button js-editor'; source.type = 'button'; source.dataset.fileId = asText(file.id); source.dataset.mode = 'source'; source.textContent = '打开源码'; actions.appendChild(source); var diff = doc.createElement('button'); diff.className = 'tiny-button js-editor'; diff.type = 'button'; diff.dataset.fileId = asText(file.id); diff.dataset.mode = 'diff'; diff.textContent = '查看 Diff'; actions.appendChild(diff); row.appendChild(actions); return row;
+    }
+    function fileById(id) {
+      var found = null; Object.keys(state.featureItems).forEach(function (key) { if (key.indexOf(':') === -1) (state.featureItems[key] || []).some(function (file) { if (asText(file.id) === asText(id)) { found = file; return true; } return false; }); }); return found || (state.review && state.review.next_file && asText(state.review.next_file.id) === asText(id) ? state.review.next_file : null);
+    }
+    function conclusionLength(text) { return Array.from(asText(text)).length; }
+    function renderReviewConclusion(file) {
+      var notes = file.conclusions || {};
+      var explanation = asText(notes.explanation); var impact = asText(notes.impact); var historical = asText(file.conclusion);
+      var parts = [];
+      if (explanation) parts.push({ label: '改动', text: explanation });
+      if (impact) parts.push({ label: '影响', text: impact });
+      if (historical && historical !== explanation && historical !== impact) parts.push({ label: '此前短评', text: historical });
+      if (!parts.length) return null;
+      var text = parts.map(function (part) { return part.text; }).join('；');
+      var preview = parts.map(function (part) { return part.label + '：' + part.text; }).join('；');
+      var block = conclusionLength(text) > 15 ? collapsibleNote('回顾结论', preview) : doc.createElement('div');
+      if (block.tagName !== 'DETAILS') block.className = 'conclusion';
+      parts.forEach(function (part) { var body = doc.createElement('p'); body.textContent = part.label + '：' + part.text; block.appendChild(body); });
+      return block;
+    }
+    function collapsibleNote(label, previewText) {
+      var details = doc.createElement('details'); details.className = 'conclusion-note';
+      var summary = doc.createElement('summary'); summary.appendChild(doc.createTextNode(label));
+      var preview = doc.createElement('span'); preview.textContent = '：' + Array.from(previewText).slice(0, 15).join('') + (conclusionLength(previewText) > 15 ? '…' : ''); preview.hidden = details.open;
+      summary.appendChild(preview); details.appendChild(summary);
+      details.addEventListener('toggle', function () { preview.hidden = details.open; }); return details;
+    }
+    function renderDescription(feature) {
+      var behavior = asText(feature.behavior, '尚未补充行为概括。');
+      var implementation = asText(feature.implementation, '尚未补充实现概括。');
+      var details = collapsibleNote('功能简介', behavior + '；' + implementation);
+      var behaviorBody = doc.createElement('p'); behaviorBody.textContent = '行为：' + behavior; details.appendChild(behaviorBody);
+      var implementationBody = doc.createElement('p'); implementationBody.textContent = '实现：' + implementation; details.appendChild(implementationBody); return details;
+    }
+    function showPrompt(action, file) {
+      var promptToken = ++state.promptToken;
+      state.prompt = buildPrompt(action, state.review, file, { saveFailed: state.saveFailed });
+      el['prompt-text'].value = state.prompt;
+      el['prompt-context'].textContent = (file ? asText(file.path) : '下一份文件') + ' · 只准备问题，由你在当前聊天发送。';
+      el['prompt-status'].textContent = typeof root.reviewCompanionDraft === 'function' ? '正在填入输入框…' : '正在复制问题…';
+      show('prompt-card', true);
+      function fallback(reason) {
+        if (promptToken !== state.promptToken) return;
+        el['prompt-status'].textContent = '请复制后发送';
+        setStatus(reason + '。请复制下方问题并自行发送。', 'warn');
+      }
+      if (typeof root.reviewCompanionDraft !== 'function') {
+        copyPrompt(state.prompt).then(function (result) {
+          if (promptToken !== state.promptToken) return;
+          if (result.copied) { el['prompt-status'].textContent = '已复制，可粘贴发送'; setStatus('问题已复制到剪贴板，请确认后发送。', 'success'); }
+          else fallback('无法自动复制');
+        });
+        return;
+      }
+      root.reviewCompanionDraft(state.prompt).then(function () {
+        if (promptToken !== state.promptToken) return;
+        el['prompt-status'].textContent = '已填入输入框，等待你发送';
+        setStatus('问题已填入当前输入框，请确认后发送。', 'success');
+      }, function (error) { fallback(error.message || '无法填入输入框'); });
+    }
+    function copyPrompt(text) { return root.ReviewCompanion.copyPrompt(text); }
+    function showExternal(data, mode, file) {
+      var command = asText(data && data.command); var externalToken = gate.value(); var externalReviewId = state.reviewId; state.external = command; el['external-title'].textContent = mode === 'project' ? '在 VS Code 打开项目' : (mode === 'diff' ? '固定版本 Diff' : '固定版本源码'); el['external-description'].textContent = asText(data && data.message, asText(file && file.path, '') + ' · 目标固定在回顾记录对应的提交版本。'); el['external-command'].textContent = command || '宿主没有返回可复制的命令。'; show('external-card', true); copyPrompt(command).then(function (result) { if (!gate.isCurrent(externalToken) || state.reviewId !== externalReviewId) return; setStatus(result.copied ? '入口命令已复制。' : '入口已显示，请手动复制。', result.copied ? 'success' : 'warn'); }); }
+    function openProject() {
+      var reviewId = state.review && state.review.review_id; var token = gate.value();
+      if (!reviewId || state.projectPending === token) return;
+      state.projectPending = token; el['open-project'].disabled = true; setStatus('正在请求 VS Code 打开项目…');
+      return call('open_project', { review_id: reviewId }).then(function (data) {
+        if (!gate.isCurrent(token) || state.reviewId !== reviewId) return;
+        if (data && data.launch_requested === true) { show('external-card', false); setStatus('已请求 VS Code 打开项目，项目树对应当前工作区。', 'success'); }
+        else { showExternal(data || {}, 'project'); setStatus(asText(data && data.message, 'VS Code 未能自动打开，请使用下方命令。'), 'warn'); }
+      }, function (error) { if (gate.isCurrent(token) && state.reviewId === reviewId) setStatus(errorMessage(error), 'error'); }).then(function () {
+        if (state.projectPending === token) state.projectPending = null;
+        el['open-project'].disabled = !state.review || state.projectPending === gate.value();
+      });
+    }
+    function prepareEditor(file, mode, trigger) { var reviewId = state.review && state.review.review_id; var selectionToken = gate.value(); if (!reviewId || !file) return; var originalLabel = trigger && trigger.textContent; if (trigger) { trigger.disabled = true; trigger.textContent = '打开中…'; } setStatus('正在准备固定版本入口…'); function restoreTrigger() { if (trigger) { trigger.disabled = false; trigger.textContent = originalLabel; } } call('open_editor', { review_id: reviewId, file_id: file.id, line: 1, mode: mode }).then(function (data) { if (!gate.isCurrent(selectionToken) || !state.review || state.review.review_id !== reviewId) { restoreTrigger(); return; } restoreTrigger(); if (data && data.launch_requested === true) { show('external-card', false); setStatus('已请求 VS Code 打开固定版本' + (mode === 'diff' ? ' Diff。' : '源码。'), 'success'); return; } showExternal(data || {}, mode, file); setStatus(asText(data && data.message, 'VS Code 未能自动打开，请使用下方命令。'), 'warn'); }, function (error) { restoreTrigger(); if (gate.isCurrent(selectionToken) && state.review && state.review.review_id === reviewId) setStatus(errorMessage(error), 'error'); }); }
+    function reloadExpandedFeatures() { var valid = new Set((state.review.features || []).map(function (feature) { return feature.id; })); Object.keys(state.expanded).forEach(function (featureId) { if (!valid.has(featureId)) { delete state.expanded[featureId]; return; } if (state.expanded[featureId]) loadFeature(featureId, 0); }); }
+    function markFile(fileId, reviewed) { if (!state.review || state.pendingMark[fileId]) return; var file = fileById(fileId); if (!file) return; var selectionToken = gate.value(); var reviewId = state.review.review_id; var expectedVersion = state.review.version; var mutationEpoch = ++state.mutationEpoch; state.pendingMark[fileId] = mutationEpoch; renderFeatures(); call('set_file_review', { review_id: reviewId, file_id: fileId, expected_version: expectedVersion, reviewed: reviewed }).then(function (data) { if (mutationEpoch !== state.mutationEpoch || !gate.isCurrent(selectionToken) || !state.review || state.review.review_id !== reviewId || !isNewerOrSame(data, state.review)) return; state.saveFailed = false; state.review = normalizeReview(data) || state.review; state.reviewId = state.review.review_id; state.featureItems = {}; renderOverview(); reloadExpandedFeatures(); setStatus(reviewed ? '已标记为已回顾。' : '已标记为未回顾。', 'success'); }, function (error) { if (mutationEpoch === state.mutationEpoch && gate.isCurrent(selectionToken) && state.reviewId === reviewId) state.saveFailed = true; if (mutationEpoch === state.mutationEpoch && gate.isCurrent(selectionToken) && state.review && state.review.review_id === reviewId) { setStatus(errorMessage(error), error && error.code === 'version_conflict' ? 'warn' : 'error'); if (error && error.code === 'version_conflict') refreshCurrent(true, true); } }).then(function () { if (state.pendingMark[fileId] === mutationEpoch) delete state.pendingMark[fileId]; if (gate.isCurrent(selectionToken) && state.reviewId === reviewId) renderFeatures(); }); }
+    function loadFeature(featureId, offset) { var token = gate.value(); var featureToken = (state.activeFeatureToken[featureId] || 0) + 1; state.activeFeatureToken[featureId] = featureToken; var existing = offset ? (state.featureItems[featureId] || []) : []; if (!offset) { state.featureItems[featureId] = null; state.featureItems[featureId + ':next'] = null; renderFeatures(); } call('list_review_files', { review_id: state.review.review_id, feature_id: featureId, offset: offset || 0, limit: 50 }).then(function (data) { if (!gate.isCurrent(token) || state.activeFeatureToken[featureId] !== featureToken || state.reviewId !== data.review_id) return; state.featureItems[featureId] = existing.concat(Array.isArray(data.items) ? data.items : []); state.featureItems[featureId + ':next'] = data.next_offset === null || data.next_offset === undefined ? null : data.next_offset; renderFeatures(); }, function (error) { if (gate.isCurrent(token)) setStatus(errorMessage(error), 'error'); }); }
+    function refreshCurrent(silent, forceFiles) { if (!state.reviewId) return Promise.resolve(); var token = gate.value(); var reviewId = state.reviewId; var mutationEpoch = state.mutationEpoch; return call('read_review', { review_id: reviewId }).then(function (data) { if (mutationEpoch !== state.mutationEpoch || !gate.isCurrent(token) || !data || data.review_id !== reviewId || !isNewerOrSame(data, state.review)) return; var changed = state.review && versionNumber(data) > versionNumber(state.review); state.review = normalizeReview(data); if (changed || forceFiles) { state.featureItems = {}; renderOverview(); reloadExpandedFeatures(); } else if (!silent) { renderSelector(); } if (!silent) setStatus('已刷新回顾进度。', 'success'); }, function (error) { if (!silent && gate.isCurrent(token)) setStatus(errorMessage(error), 'error'); }); }
+    function loadReview(args) { var token = gate.next(); var mutationEpoch = state.mutationEpoch; var previousReviewId = state.reviewId; state.promptToken += 1; setStatus('正在读取回顾…'); return call(args && args.activate ? 'activate_review' : 'read_review', args && args.activate ? { review_id: args.review_id } : (args || {})).then(function (data) { if (mutationEpoch !== state.mutationEpoch || !gate.isCurrent(token) || (state.review && data && data.review_id === state.review.review_id && !isNewerOrSame(data, state.review))) return; var sameReview = Boolean(state.review && data && data.review_id === previousReviewId && data.review_id === state.review.review_id && !(args && args.activate)); state.review = normalizeReview(data); state.reviewId = state.review && state.review.review_id; state.featureItems = {}; if (!sameReview) { state.expanded = {}; state.pendingMark = {}; state.saveFailed = false; } if (state.review) { renderOverview(); if (sameReview) reloadExpandedFeatures(); setStatus('已载入回顾。', 'success'); startPolling(); } else { stopPolling(); renderOverview(); setStatus('还没有可显示的回顾。', ''); } }, function (error) { if (!gate.isCurrent(token)) return; if (error && error.code === 'host_missing') { stopPolling(); show('host-missing', true); show('empty-state', false); show('content', false); setStatus(''); } else if (error && error.code === 'no_review') { stopPolling(); state.review = null; state.reviewId = null; state.featureItems = {}; state.expanded = {}; renderOverview(); setStatus(errorMessage(error), ''); } else { setStatus(errorMessage(error), 'error'); renderOverview(); } }); }
+    function acceptHostOutput(output) {
+      var candidate = output && (output.structuredContent || output.data || output);
+      if (!candidate || !candidate.review_id || !Array.isArray(candidate.features) || !candidate.comparison || !candidate.progress) return;
+      var same = state.reviewId === candidate.review_id;
+      if (same && !isNewerOrSame(candidate, state.review)) return;
+      if (same && state.review && candidate.version === state.review.version) return;
+      if (!same) { gate.next(); state.expanded = {}; state.saveFailed = false; state.promptToken += 1; show('prompt-card', false); show('external-card', false); }
+      state.review = normalizeReview(candidate); state.reviewId = candidate.review_id; state.featureItems = {};
+      renderOverview(); if (same) reloadExpandedFeatures(); startPolling();
+    }
+    function startPolling() { if (state.pollTimer || !state.reviewId || doc.visibilityState !== 'visible') return; state.pollTimer = root.setInterval(function () { if (doc.visibilityState === 'visible' && !state.pollPending) { state.pollPending = true; refreshCurrent(true).then(function () { state.pollPending = false; }, function () { state.pollPending = false; }); } }, 5000); }
+    function stopPolling() { if (state.pollTimer) { root.clearInterval(state.pollTimer); state.pollTimer = null; } }
+    function bind() {
+      el['theme-toggle'].addEventListener('click', function () { setTheme(doc.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'); });
+      el['open-project'].addEventListener('click', openProject);
+      el['refresh-button'].addEventListener('click', function () { refreshCurrent(false); });
+      el['review-selector'].addEventListener('change', function () { state.saveFailed = false; loadReview({ review_id: el['review-selector'].value, activate: true }); });
+      el['feature-list'].addEventListener('click', function (event) { var toggle = event.target.closest('.feature-toggle'); if (toggle) { var id = toggle.dataset.featureId; state.expanded[id] = !state.expanded[id]; renderFeatures(); if (state.expanded[id] && !state.featureItems[id]) loadFeature(id, 0); return; } var more = event.target.closest('[data-load-feature]'); if (more) { var fid = more.dataset.loadFeature; loadFeature(fid, state.featureItems[fid] ? state.featureItems[fid].length : 0); return; } var action = event.target.closest('.js-action'); if (action) { showPrompt(action.dataset.action, fileById(action.dataset.fileId)); return; } var mark = event.target.closest('.js-mark'); if (mark) { mark.disabled = true; markFile(mark.dataset.fileId, mark.dataset.reviewed === 'true'); return; } var editor = event.target.closest('.js-editor'); if (editor) prepareEditor(fileById(editor.dataset.fileId), editor.dataset.mode, editor); });
+      el['next-action'].addEventListener('click', function () { showPrompt('next', nextFileFor(state.review)); });
+      el['copy-prompt'].addEventListener('click', function () { copyPrompt(state.prompt).then(function (result) { setStatus(result.copied ? '问题已复制，请粘贴到当前聊天后发送。' : '请从文本框选择并复制问题。', result.copied ? 'success' : 'warn'); }); });
+      el['close-prompt'].addEventListener('click', function () { show('prompt-card', false); }); el['close-external'].addEventListener('click', function () { show('external-card', false); });
+      el['copy-command'].addEventListener('click', function () { copyPrompt(state.external).then(function (result) { setStatus(result.copied ? '入口命令已复制。' : '请手动选择并复制入口命令。', result.copied ? 'success' : 'warn'); }); });
+      doc.addEventListener('visibilitychange', function () { if (doc.visibilityState === 'visible') { loadReview({}).then(startPolling); } else stopPolling(); });
+      if (typeof root.addEventListener === 'function') root.addEventListener('openai:set_globals', function (event) { var detail = event && event.detail; var output = (detail && detail.globals && detail.globals.toolOutput) || (detail && detail.toolOutput); var candidate = output && (output.structuredContent || output.data || output); if (output && output.isError) state.saveFailed = true; if (candidate && candidate.review_id && candidate.review_id !== state.reviewId) state.saveFailed = false; acceptHostOutput(output); });
+      setTheme('light');
+      loadReview({});
+    }
+    if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', bind); else bind();
+    root.ReviewCompanion.reload = function () { return loadReview({}); };
+    root.ReviewCompanion.resetSession = function () { state.promptToken += 1; state.prompt = ''; el['prompt-text'].value = ''; show('prompt-card', false); return loadReview({}); };
+    root.ReviewCompanion.__test = { state: state, loadReview: loadReview, refreshCurrent: refreshCurrent, loadFeature: loadFeature, markFile: markFile, prepareEditor: prepareEditor, openProject: openProject, showPrompt: showPrompt, renderOverview: renderOverview, renderFeatures: renderFeatures };
+  })(window);
+  </script>
+</body>
+</html>

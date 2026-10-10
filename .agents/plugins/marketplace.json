@@ -1,0 +1,5 @@
+{
+  "name":"review-companion-unified-local",
+  "interface":{"displayName":"回顾伴随统一版"},
+  "plugins":[{"name":"review-companion","source":{"source":"local","path":"./"},"policy":{"installation":"AVAILABLE","authentication":"ON_INSTALL"},"category":"Productivity"}]
+}

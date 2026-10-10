@@ -1,0 +1,15 @@
+{
+  "name": "review-companion-unified-local",
+  "owner": {
+    "name": "Review Companion"
+  },
+  "plugins": [
+    {
+      "name": "review-companion",
+      "source": "./",
+      "version": "0.4.0",
+      "description": "回顾伴随统一版：共享总览、固定证据和回顾进度。"
+    }
+  ],
+  "description": "回顾伴随统一版的本地安装来源，支持共享固定版本回顾和进度。"
+}
